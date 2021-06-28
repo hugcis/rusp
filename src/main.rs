@@ -59,6 +59,10 @@ fn main() {
             Key::Char('\n') => {
                 print!("\r\n");
                 let buf_str = buf.iter().collect::<String>();
+                match buf_str.as_str() {
+                    "?ctx" => print!("{:?}\r\n", ctx),
+                    _ => {}
+                };
                 match parse_str(&buf_str) {
                     Ok(ast) => {
                         let result = ctx.eval_ast(&ast);

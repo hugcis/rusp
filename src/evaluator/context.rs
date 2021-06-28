@@ -4,13 +4,13 @@ use crate::parser::Expr::Qexpr;
 use crate::parser::{Atom, Expr, Num, Ops};
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Context {
     vars: HashMap<String, Expr>,
     funcs: HashMap<String, Function>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Function {
     args: Vec<String>,
     body: Expr,
@@ -21,11 +21,7 @@ impl Context {
         &self.funcs
     }
 
-    fn get_function_from_name(
-        &self,
-        name: &str,
-        args: &[Expr],
-    ) -> Result<Function, &'static str> {
+    fn get_function_from_name(&self, name: &str, args: &[Expr]) -> Result<Function, &'static str> {
         let fun_res = self.get_funcs().get(name);
         match fun_res {
             Some(fun) => {
@@ -43,10 +39,17 @@ impl Context {
         match function {
             Atomic(Atom::Name(name)) => {
                 let fun = self.get_function_from_name(name, &args)?;
+                // Add the local variables to the context
                 for (i, arg_name) in fun.args.iter().enumerate() {
                     self.vars.insert(arg_name.to_string(), args[i].clone());
                 }
-                self.eval_ast(&fun.body)
+                let res = self.eval_ast(&fun.body);
+                // Pop local variables from the context
+                for arg_name in fun.args.iter() {
+                    self.vars.remove(&arg_name.to_string());
+                }
+                res
+
             }
             Atomic(Atom::Op(op)) => match op {
                 Ops::Add => self.add(args),
@@ -66,7 +69,7 @@ impl Context {
                 Some(var) => {
                     let var = var.clone();
                     self.eval_ast(&var)
-                },
+                }
                 None => Err("Void variable"),
             },
             Atomic(Atom::Op(_op)) => Err("Void variable"),
@@ -213,7 +216,32 @@ impl Context {
     }
 
     fn defun(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
-
+        if args.len() != 3 {
+            Err("Invalid defun syntax")
+        } else {
+            match args.as_slice() {
+                [Atomic(Atom::Name(name)), List(fn_args), List(fn_body)] => {
+                    self.funcs.insert(
+                        name.to_string(),
+                        Function {
+                            args: fn_args
+                                .into_iter()
+                                .map(|x| {
+                                    if let Atomic(Atom::Name(s)) = x {
+                                        Ok(s.clone())
+                                    } else {
+                                        Err("Wrong argument")
+                                    }
+                                })
+                                .collect::<Result<Vec<String>, _>>()?,
+                            body: List(fn_body.to_vec()),
+                        },
+                    );
+                    Ok(Atomic(Atom::Name(name.to_string())))
+                }
+                _ => Err("Invalid defun syntax"),
+            }
+        }
     }
 }
 
@@ -287,5 +315,28 @@ mod tests {
         );
         let result = ctx.eval_ast(&ast);
         assert_eq!(result, Ok(Expr::Atomic(Atom::Number(Num::Int(196)))));
+    }
+
+    #[test]
+    fn should_define_function() {
+        let mut ctx = Context::default();
+        let ast = Expr::List(
+            [
+                Atomic(Atom::Name("defun".to_string())),
+                Atomic(Atom::Name("square".to_string())),
+                List([Atomic(Atom::Name("x".to_string()))].to_vec()),
+                List(
+                    [
+                        Atomic(Atom::Op(Ops::Mul)),
+                        Atomic(Atom::Name("x".to_string())),
+                        Atomic(Atom::Name("x".to_string())),
+                    ]
+                    .to_vec(),
+                ),
+            ]
+            .to_vec(),
+        );
+        let result = ctx.eval_ast(&ast);
+        assert_eq!(result, Ok(Expr::Atomic(Atom::Name("square".to_string()))));
     }
 }
