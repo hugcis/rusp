@@ -1,7 +1,10 @@
 extern crate termion;
 
-mod parser;
+mod evaluator;
+pub mod parser;
 
+use crate::evaluator::Context;
+use crate::parser::parse_str;
 use std::io::{stdin, stdout, Write};
 use termion::event::Key;
 use termion::input::TermRead;
@@ -22,53 +25,6 @@ fn print_prompt<W: Write>(out: &mut RawTerminal<W>) {
     out.flush().unwrap();
 }
 
-fn parse_str(buf_str: &str) -> Result<(parser::Ops, Vec<parser::Expr>), String> {
-    parser::lispy(buf_str.as_bytes())
-        .map_err(|e: nom::Err<_>| format!("{:#?}", e))
-        .and_then(|(_, exp)| Ok(exp))
-}
-
-fn parse_expr(exp: &parser::Expr) -> Result<i64, &str> {
-    match exp {
-        parser::Expr::Int(a) => Ok(*a),
-        parser::Expr::Obj(b) => eval_ast(b),
-    }
-}
-
-fn eval_ast(ast: &(parser::Ops, Vec<parser::Expr>)) -> Result<i64, &str> {
-    match ast {
-        (parser::Ops::Add, v) => v.iter().try_fold(0, |sum, i| Ok(sum + parse_expr(i)?)),
-        (parser::Ops::Mul, v) => v.iter().try_fold(1, |mul, i| Ok(mul * parse_expr(i)?)),
-        (parser::Ops::Sub, v) => {
-            if (v.len() != 2) & (v.len() != 1) {
-                Err("Substraction operates on two inputs.")
-            } else if v.len() == 2 {
-                Ok(parse_expr(&v[0])? - parse_expr(&v[1])?)
-            } else {
-                Ok(-parse_expr(&v[0])?)
-            }
-        }
-        (parser::Ops::Div, v) => {
-            if v.len() != 2 {
-                Err("Division operates on two inputs.")
-            } else {
-                Ok(parse_expr(&v[0])?
-                    .checked_div(parse_expr(&v[1])?)
-                    .ok_or("Invalid division by 0")?)
-            }
-        }
-        (parser::Ops::Rem, v) => {
-            if v.len() != 2 {
-                Err("Remainder operates on two inputs.")
-            } else {
-                Ok(parse_expr(&v[0])?
-                    .checked_rem(parse_expr(&v[1])?)
-                    .ok_or("Invalid remainder by 0")?)
-            }
-        }
-    }
-}
-
 fn main() {
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -78,6 +34,8 @@ fn main() {
         style::Bold,
         style::Reset,
     );
+
+    let mut ctx = Context::default();
 
     let mut buf: Vec<char> = vec![];
     let mut history: Vec<String> = vec![];
@@ -101,15 +59,15 @@ fn main() {
             Key::Char('\n') => {
                 print!("\r\n");
                 let buf_str = buf.iter().collect::<String>();
-                match parse_str(&format!("{}\r\n", buf_str)) {
+                match parse_str(&buf_str) {
                     Ok(ast) => {
-                        let result = eval_ast(&ast);
+                        let result = ctx.eval_ast(&ast);
                         match result {
-                            Ok(result) => print!("{}\r\n", result),
+                            Ok(result) => print!("{:?}\r\n", result),
                             Err(e) => eprint!("Eval error: {}\r\n", e),
                         }
                     }
-                    Err(e) => eprint!("Invalid syntax\r\n"),
+                    Err(_e) => eprint!("Invalid syntax\r\n"),
                 }
                 print_prompt(&mut stdout);
                 if count > 0 {
@@ -126,15 +84,14 @@ fn main() {
                 buf.push(c);
             }
             Key::Backspace => {
-                buf.pop().and_then(|_| {
+                if buf.pop().is_some() {
                     count -= 1;
                     print!(
                         "{}{}",
                         termion::cursor::Left(1),
                         termion::clear::AfterCursor
                     );
-                    Some(())
-                });
+                }
             }
             _ => {}
         }
