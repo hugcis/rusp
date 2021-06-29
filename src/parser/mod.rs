@@ -12,6 +12,13 @@ use nom::sequence::{delimited, pair, preceded, terminated};
 use nom::IResult;
 use nom::{alt, named, tag};
 
+use custom_error::custom_error;
+
+custom_error! {pub SyntaxError
+              TrailingGarbage = "Trailing garbage following expression",
+              InvalidSyntax{message: String} = "Invalid syntax: {message}"
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Atomic(Atom),
@@ -25,6 +32,13 @@ pub enum Atom {
     Quoted(String),
     Op(Ops),
     Number(Num),
+    Boolean(Bool),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Bool {
+    True,
+    Nil,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -41,6 +55,8 @@ pub enum Ops {
     Add,
     Rem,
     Defun,
+    Nth,
+    List,
 }
 
 fn decimal(input: &str) -> IResult<&str, i64> {
@@ -73,6 +89,8 @@ named!(
             | tag!("-") => { |_| Ops::Sub }
             | tag!("/") => { |_| Ops::Div }
             | tag!("%") => { |_| Ops::Rem }
+            | tag!("nth") => { |_| Ops::Nth }
+            | tag!("list") => { |_| Ops::List }
     )
 );
 
@@ -99,10 +117,18 @@ pub fn expression(input: &str) -> IResult<&str, Expr> {
     ))(input)
 }
 
-pub fn parse_str(buf_str: &str) -> Result<Expr, String> {
+pub fn parse_str(buf_str: &str) -> Result<Expr, SyntaxError> {
     expression(buf_str)
-        .map_err(|e: nom::Err<_>| format!("{:#?}", e))
-        .map(|(_, exp)| exp)
+        .map_err(|e: nom::Err<_>| SyntaxError::InvalidSyntax {
+            message: e.to_string(),
+        })
+        .map(|(r, exp)| {
+            if r == "" {
+                Ok(exp)
+            } else {
+                Err(SyntaxError::TrailingGarbage)
+            }
+        })?
 }
 
 #[cfg(test)]
@@ -111,10 +137,10 @@ mod tests {
 
     #[test]
     fn should_parse_numbers_polish() {
-        use Atom::*;
-        use Expr::*;
-        use Num::*;
-        use Ops::*;
+        use Atom::{Number, Op};
+        use Expr::Atomic;
+        use Num::{Double, Int};
+        use Ops::{Add, Div, Sub};
         let inp = "(+ 3 12 2 (- 2. (/ 4 5E-3)))";
         let res = sexpr(inp).expect("Parsing error");
         assert_eq!(
@@ -124,11 +150,11 @@ mod tests {
                 Atomic(Number(Int(3))),
                 Atomic(Number(Int(12))),
                 Atomic(Number(Int(2))),
-                List(
+                Expr::List(
                     [
                         Atomic(Op(Sub)),
                         Atomic(Number(Double(2.0))),
-                        List(
+                        Expr::List(
                             [
                                 Atomic(Op(Div)),
                                 Atomic(Number(Int(4))),
@@ -181,14 +207,14 @@ mod tests {
     #[test]
     fn should_parse_qexpr() {
         use Atom::{Name, Number, Op, Quoted};
-        use Expr::{Atomic, List, Qexpr};
+        use Expr::{Atomic, Qexpr};
         use Num::Int;
         use Ops;
         let inp = "(lexp 3  2 '(3 (+ 2 5)  \"ok\" )  )";
         let res = expression(inp).expect("Parsing error");
         assert_eq!(
             res.1,
-            List(
+            Expr::List(
                 [
                     Atomic(Name("lexp".to_string())),
                     Atomic(Number(Int(3))),
@@ -196,7 +222,7 @@ mod tests {
                     Qexpr(
                         [
                             Atomic(Number(Int(3))),
-                            List(
+                            Expr::List(
                                 [
                                     Atomic(Op(Ops::Add)),
                                     Atomic(Number(Int(2))),

@@ -1,8 +1,25 @@
 use crate::parser::Expr::Atomic;
-use crate::parser::Expr::List;
 use crate::parser::Expr::Qexpr;
-use crate::parser::{Atom, Expr, Num, Ops};
+use crate::parser::{Atom, Bool, Expr, Num, Ops};
+use custom_error::custom_error;
 use std::collections::HashMap;
+
+custom_error! {
+    pub EvalError
+    ArgumentNumber{exp: usize, got: usize} = "Wrong number of arguments, expected {exp}, got {got}",
+    InvalidArguments{args: Vec<Expr>} = "Invalid arguments {args:?}",
+    VoidFunction{name: String} = "Function {name} not found",
+    VoidVariable{name: String} = "Variable {name} not found",
+    ShouldBeNum = "Argument should be number",
+    InvalidVarName = "Invalid variable name",
+    Unimplemented{name: String} = "Built-in {name} not implemented",
+    InvalidFunction = "Invalid function",
+    IntOverflow = "Integer overflow",
+    DivBy0 = "Division by 0",
+    InvalidSyntax = "Invalid syntax"
+}
+
+type Result<T> = std::result::Result<T, EvalError>;
 
 #[derive(Default, Debug)]
 pub struct Context {
@@ -21,21 +38,26 @@ impl Context {
         &self.funcs
     }
 
-    fn get_function_from_name(&self, name: &str, args: &[Expr]) -> Result<Function, &'static str> {
+    fn get_function_from_name(&self, name: &str, args: &[Expr]) -> Result<Function> {
         let fun_res = self.get_funcs().get(name);
         match fun_res {
             Some(fun) => {
                 if args.len() != fun.args.len() {
-                    Err("Wrong number of arguments")
+                    Err(EvalError::ArgumentNumber {
+                        exp: fun.args.len(),
+                        got: args.len(),
+                    })
                 } else {
                     Ok(fun.clone())
                 }
             }
-            None => Err("Void function"),
+            None => Err(EvalError::VoidFunction {
+                name: name.to_string(),
+            }),
         }
     }
 
-    fn eval(&mut self, function: &Expr, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn eval(&mut self, function: &Expr, args: Vec<Expr>) -> Result<Expr> {
         match function {
             Atomic(Atom::Name(name)) => {
                 let fun = self.get_function_from_name(name, &args)?;
@@ -49,7 +71,6 @@ impl Context {
                     self.vars.remove(&arg_name.to_string());
                 }
                 res
-
             }
             Atomic(Atom::Op(op)) => match op {
                 Ops::Add => self.add(args),
@@ -57,26 +78,32 @@ impl Context {
                 Ops::Mul => self.mul(args),
                 Ops::Div => self.div(args),
                 Ops::Defun => self.defun(args),
-                _ => Err("Built-in not implemented"),
+                Ops::Nth => self.nth(args),
+                Ops::List => self.list(args),
+                _ => Err(EvalError::Unimplemented {
+                    name: format!("{:?}", op),
+                }),
             },
-            _ => Err("Invalid function"),
+            _ => Err(EvalError::InvalidFunction),
         }
     }
 
-    pub fn eval_ast(&mut self, ast: &Expr) -> Result<Expr, &'static str> {
+    pub fn eval_ast(&mut self, ast: &Expr) -> Result<Expr> {
         match ast {
             Atomic(Atom::Name(name)) => match self.vars.get(name.as_str()) {
                 Some(var) => {
                     let var = var.clone();
                     self.eval_ast(&var)
                 }
-                None => Err("Void variable"),
+                None => Err(EvalError::VoidVariable {
+                    name: name.to_string(),
+                }),
             },
-            Atomic(Atom::Op(_op)) => Err("Void variable"),
+            Atomic(Atom::Op(op)) => Err(EvalError::InvalidVarName),
             Atomic(atom) => Ok(Expr::Atomic(atom.clone())),
-            List(sexp_list) => {
+            Expr::List(sexp_list) => {
                 if sexp_list.is_empty() {
-                    Err("Empty s-expression")
+                    Ok(Atomic(Atom::Boolean(Bool::Nil)))
                 } else {
                     self.eval(&sexp_list[0], sexp_list[1..].to_vec())
                 }
@@ -85,19 +112,29 @@ impl Context {
         }
     }
 
-    fn args_to_numbers(&mut self, args: Vec<Expr>) -> Result<Vec<Num>, &'static str> {
+    fn args_to_numbers(&mut self, args: Vec<Expr>) -> Result<Vec<Num>> {
         args.into_iter()
             .map(|x| self.eval_ast(&x))
-            .collect::<Result<Vec<Expr>, _>>()?
+            .collect::<Result<Vec<Expr>>>()?
             .into_iter()
             .map(|x| match x {
                 Atomic(Atom::Number(n)) => Ok(n),
-                _ => Err("Invalid argument should be number"),
+                _ => Err(EvalError::ShouldBeNum),
             })
-            .collect::<Result<Vec<Num>, _>>()
+            .collect::<Result<Vec<Num>>>()
     }
 
-    fn add(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn nth(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        match args.as_slice() {
+            [Atomic(Atom::Number(Num::Int(idx))), Qexpr(vec)] => {
+                let answer = vec[*idx as usize].clone();
+                Ok(answer)
+            }
+            _ => Err(EvalError::InvalidArguments { args }),
+        }
+    }
+
+    fn add(&mut self, args: Vec<Expr>) -> Result<Expr> {
         let num = self.args_to_numbers(args)?;
         // Double type will spread and int will be cast to double
         Ok(Atomic(Atom::Number(
@@ -118,13 +155,13 @@ impl Context {
                             _ => 0,
                         })
                         .try_fold(0, |acc: i64, x: i64| acc.checked_add(x))
-                        .ok_or("Addition error : integer overflow")?,
+                        .ok_or(EvalError::IntOverflow)?,
                 )
             },
         )))
     }
 
-    fn mul(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn mul(&mut self, args: Vec<Expr>) -> Result<Expr> {
         let num = self.args_to_numbers(args)?;
         // Double type will spread and int will be cast to double
         Ok(Atomic(Atom::Number(
@@ -145,15 +182,18 @@ impl Context {
                             _ => 0,
                         })
                         .try_fold(1, |acc: i64, x: i64| acc.checked_mul(x))
-                        .ok_or("Integer overflow")?,
+                        .ok_or(EvalError::IntOverflow)?,
                 )
             },
         )))
     }
 
-    fn sub(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn sub(&mut self, args: Vec<Expr>) -> Result<Expr> {
         if args.len() != 2 {
-            return Err("Substraction takes 2 arguments");
+            return Err(EvalError::ArgumentNumber {
+                exp: 2,
+                got: args.len(),
+            });
         }
         let num = self.args_to_numbers(args)?;
         Ok(Atomic(Atom::Number(
@@ -177,15 +217,18 @@ impl Context {
                             _ => 0,
                         })
                         .collect();
-                    neg[0].checked_sub(neg[1]).ok_or("Integer overflow")?
+                    neg[0].checked_sub(neg[1]).ok_or(EvalError::IntOverflow)?
                 })
             },
         )))
     }
 
-    fn div(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn div(&mut self, args: Vec<Expr>) -> Result<Expr> {
         if args.len() != 2 {
-            return Err("Substraction takes 2 arguments");
+            return Err(EvalError::ArgumentNumber {
+                exp: 2,
+                got: args.len(),
+            });
         }
         let num = self.args_to_numbers(args)?;
         Ok(Atomic(Atom::Number(
@@ -209,39 +252,50 @@ impl Context {
                             _ => 0,
                         })
                         .collect();
-                    neg[0].checked_div(neg[1]).ok_or("Division by 0")?
+                    neg[0].checked_div(neg[1]).ok_or(EvalError::DivBy0)?
                 })
             },
         )))
     }
 
-    fn defun(&mut self, args: Vec<Expr>) -> Result<Expr, &'static str> {
+    fn defun(&mut self, args: Vec<Expr>) -> Result<Expr> {
         if args.len() != 3 {
-            Err("Invalid defun syntax")
+            Err(EvalError::ArgumentNumber {
+                exp: 3,
+                got: args.len(),
+            })
         } else {
             match args.as_slice() {
-                [Atomic(Atom::Name(name)), List(fn_args), List(fn_body)] => {
+                [Atomic(Atom::Name(name)), Expr::List(fn_args), Expr::List(fn_body)] => {
                     self.funcs.insert(
                         name.to_string(),
                         Function {
                             args: fn_args
-                                .into_iter()
+                                .iter()
                                 .map(|x| {
                                     if let Atomic(Atom::Name(s)) = x {
                                         Ok(s.clone())
                                     } else {
-                                        Err("Wrong argument")
+                                        Err(EvalError::InvalidArguments {args: fn_args.to_vec()})
                                     }
                                 })
-                                .collect::<Result<Vec<String>, _>>()?,
-                            body: List(fn_body.to_vec()),
+                                .collect::<Result<Vec<String>>>()?,
+                            body: Expr::List(fn_body.to_vec()),
                         },
                     );
                     Ok(Atomic(Atom::Name(name.to_string())))
                 }
-                _ => Err("Invalid defun syntax"),
+                _ => Err(EvalError::InvalidSyntax),
             }
         }
+    }
+
+    fn list(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        Ok(Qexpr(
+            args.iter()
+                .map(|x| self.eval_ast(x))
+                .collect::<Result<Vec<Expr>>>()?,
+        ))
     }
 }
 
@@ -249,7 +303,7 @@ impl Context {
 mod tests {
     use super::Context;
     use crate::evaluator::context::Function;
-    use crate::parser::{Atom, Expr, Expr::Atomic, Expr::List, Num, Ops};
+    use crate::parser::{Atom, Expr, Expr::Atomic, Num, Ops};
 
     #[test]
     fn should_eval_atomic() {
@@ -267,7 +321,7 @@ mod tests {
                 Atomic(Atom::Op(Ops::Add)),
                 Atomic(Atom::Number(Num::Int(3))),
                 Atomic(Atom::Number(Num::Int(3))),
-                List(
+                Expr::List(
                     [
                         Atomic(Atom::Op(Ops::Add)),
                         Atomic(Atom::Number(Num::Int(5))),
@@ -302,7 +356,7 @@ mod tests {
         let ast = Expr::List(
             [
                 Atomic(Atom::Name("square".to_string())),
-                List(
+                Expr::List(
                     [
                         Atomic(Atom::Op(Ops::Add)),
                         Atomic(Atom::Number(Num::Int(5))),
@@ -322,10 +376,10 @@ mod tests {
         let mut ctx = Context::default();
         let ast = Expr::List(
             [
-                Atomic(Atom::Name("defun".to_string())),
+                Atomic(Atom::Op(Ops::Defun)),
                 Atomic(Atom::Name("square".to_string())),
-                List([Atomic(Atom::Name("x".to_string()))].to_vec()),
-                List(
+                Expr::List([Atomic(Atom::Name("x".to_string()))].to_vec()),
+                Expr::List(
                     [
                         Atomic(Atom::Op(Ops::Mul)),
                         Atomic(Atom::Name("x".to_string())),

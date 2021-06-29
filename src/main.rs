@@ -1,3 +1,4 @@
+extern crate custom_error;
 extern crate termion;
 
 mod evaluator;
@@ -59,9 +60,9 @@ fn main() {
             Key::Char('\n') => {
                 print!("\r\n");
                 let buf_str = buf.iter().collect::<String>();
-                match buf_str.as_str() {
-                    "?ctx" => print!("{:?}\r\n", ctx),
-                    _ => {}
+                // Debug command to dump the whole context
+                if buf_str.as_str() == "?ctx" {
+                    print!("{:?}\r\n", ctx)
                 };
                 match parse_str(&buf_str) {
                     Ok(ast) => {
@@ -71,7 +72,7 @@ fn main() {
                             Err(e) => eprint!("Eval error: {}\r\n", e),
                         }
                     }
-                    Err(_e) => eprint!("Invalid syntax\r\n"),
+                    Err(e) => eprint!("{}\r\n", e),
                 }
                 print_prompt(&mut stdout);
                 if count > 0 {
