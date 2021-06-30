@@ -11,6 +11,7 @@ use nom::number::complete::double;
 use nom::sequence::{delimited, pair, preceded, terminated};
 use nom::IResult;
 use nom::{alt, named, tag};
+use std::fmt;
 
 use custom_error::custom_error;
 
@@ -57,6 +58,62 @@ pub enum Ops {
     Defun,
     Nth,
     List,
+}
+
+impl fmt::Display for Num {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Num::Double(d) => write!(f, "{}", d),
+            Num::Int(d) => write!(f, "{}", d),
+        }
+    }
+}
+
+impl fmt::Display for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Bool::True => write!(f, "t"),
+            Bool::Nil => write!(f, "nil"),
+        }
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Atom::Name(n) => write!(f, "{}", n),
+            Atom::Quoted(n) => write!(f, "\"{}\"", n),
+            Atom::Op(op) => write!(f, "{:?}", op),
+            Atom::Number(num) => write!(f, "{}", num),
+            Atom::Boolean(bl) => write!(f, "{}", bl),
+        }
+    }
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Atomic(atom) => write!(f, "{}", atom),
+            Expr::Qexpr(exprs) => write!(
+                f,
+                "({})",
+                exprs
+                    .iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            ),
+            Expr::List(exprs) => write!(
+                f,
+                "'({})",
+                exprs
+                    .iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            ),
+        }
+    }
 }
 
 fn decimal(input: &str) -> IResult<&str, i64> {
@@ -123,7 +180,7 @@ pub fn parse_str(buf_str: &str) -> Result<Expr, SyntaxError> {
             message: e.to_string(),
         })
         .map(|(r, exp)| {
-            if r == "" {
+            if r.is_empty() {
                 Ok(exp)
             } else {
                 Err(SyntaxError::TrailingGarbage)

@@ -68,7 +68,7 @@ fn main() {
                     Ok(ast) => {
                         let result = ctx.eval_ast(&ast);
                         match result {
-                            Ok(result) => print!("{:?}\r\n", result),
+                            Ok(result) => print!("{}\r\n", result),
                             Err(e) => eprint!("Eval error: {}\r\n", e),
                         }
                     }

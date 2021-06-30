@@ -7,7 +7,7 @@ use std::collections::HashMap;
 custom_error! {
     pub EvalError
     ArgumentNumber{exp: usize, got: usize} = "Wrong number of arguments, expected {exp}, got {got}",
-    InvalidArguments{args: Vec<Expr>} = "Invalid arguments {args:?}",
+    InvalidArguments{args: String} = "Invalid arguments {args}",
     VoidFunction{name: String} = "Function {name} not found",
     VoidVariable{name: String} = "Variable {name} not found",
     ShouldBeNum = "Argument should be number",
@@ -99,7 +99,7 @@ impl Context {
                     name: name.to_string(),
                 }),
             },
-            Atomic(Atom::Op(op)) => Err(EvalError::InvalidVarName),
+            Atomic(Atom::Op(_op)) => Err(EvalError::InvalidVarName),
             Atomic(atom) => Ok(Expr::Atomic(atom.clone())),
             Expr::List(sexp_list) => {
                 if sexp_list.is_empty() {
@@ -130,7 +130,13 @@ impl Context {
                 let answer = vec[*idx as usize].clone();
                 Ok(answer)
             }
-            _ => Err(EvalError::InvalidArguments { args }),
+            _ => Err(EvalError::InvalidArguments {
+                args: args
+                    .iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            }),
         }
     }
 
@@ -276,7 +282,13 @@ impl Context {
                                     if let Atomic(Atom::Name(s)) = x {
                                         Ok(s.clone())
                                     } else {
-                                        Err(EvalError::InvalidArguments {args: fn_args.to_vec()})
+                                        Err(EvalError::InvalidArguments {
+                                            args: fn_args
+                                                .iter()
+                                                .map(|x| format!("{}", x))
+                                                .collect::<Vec<String>>()
+                                                .join(" "),
+                                        })
                                     }
                                 })
                                 .collect::<Result<Vec<String>>>()?,
