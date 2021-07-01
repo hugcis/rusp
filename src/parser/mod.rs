@@ -1,7 +1,9 @@
 extern crate nom;
 
 mod strparser;
+mod types;
 
+use custom_error::custom_error;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, tag_no_case};
 use nom::character::complete::{alpha1, alphanumeric1, char, one_of};
@@ -11,109 +13,13 @@ use nom::number::complete::double;
 use nom::sequence::{delimited, pair, preceded, terminated};
 use nom::IResult;
 use nom::{alt, named, tag};
-use std::fmt;
 
-use custom_error::custom_error;
+pub use types::{Atom, Bool, Expr, Num, Ops};
 
-custom_error! {pub SyntaxError
-              TrailingGarbage = "Trailing garbage following expression",
-              InvalidSyntax{message: String} = "Invalid syntax: {message}"
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {
-    Atomic(Atom),
-    Qexpr(Vec<Expr>),
-    List(Vec<Expr>),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Atom {
-    Name(String),
-    Quoted(String),
-    Op(Ops),
-    Number(Num),
-    Boolean(Bool),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Bool {
-    True,
-    Nil,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Num {
-    Double(f64),
-    Int(i64),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Ops {
-    Sub,
-    Mul,
-    Div,
-    Add,
-    Rem,
-    Defun,
-    Nth,
-    List,
-}
-
-impl fmt::Display for Num {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Num::Double(d) => write!(f, "{}", d),
-            Num::Int(d) => write!(f, "{}", d),
-        }
-    }
-}
-
-impl fmt::Display for Bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Bool::True => write!(f, "t"),
-            Bool::Nil => write!(f, "nil"),
-        }
-    }
-}
-
-impl fmt::Display for Atom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Atom::Name(n) => write!(f, "{}", n),
-            Atom::Quoted(n) => write!(f, "\"{}\"", n),
-            Atom::Op(op) => write!(f, "{:?}", op),
-            Atom::Number(num) => write!(f, "{}", num),
-            Atom::Boolean(bl) => write!(f, "{}", bl),
-        }
-    }
-}
-
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Atomic(atom) => write!(f, "{}", atom),
-            Expr::Qexpr(exprs) => write!(
-                f,
-                "({})",
-                exprs
-                    .iter()
-                    .map(|x| format!("{}", x))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            ),
-            Expr::List(exprs) => write!(
-                f,
-                "'({})",
-                exprs
-                    .iter()
-                    .map(|x| format!("{}", x))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            ),
-        }
-    }
+custom_error! {
+    pub SyntaxError
+    TrailingGarbage = "Trailing garbage following expression",
+    ParsingError{message: String} = "Invalid syntax: {message}"
 }
 
 fn decimal(input: &str) -> IResult<&str, i64> {
@@ -148,6 +54,7 @@ named!(
             | tag!("%") => { |_| Ops::Rem }
             | tag!("nth") => { |_| Ops::Nth }
             | tag!("list") => { |_| Ops::List }
+            | tag!("eval") => { |_| Ops::Eval }
     )
 );
 
@@ -176,7 +83,7 @@ pub fn expression(input: &str) -> IResult<&str, Expr> {
 
 pub fn parse_str(buf_str: &str) -> Result<Expr, SyntaxError> {
     expression(buf_str)
-        .map_err(|e: nom::Err<_>| SyntaxError::InvalidSyntax {
+        .map_err(|e: nom::Err<_>| SyntaxError::ParsingError {
             message: e.to_string(),
         })
         .map(|(r, exp)| {

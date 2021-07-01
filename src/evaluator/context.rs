@@ -7,7 +7,7 @@ use std::collections::HashMap;
 custom_error! {
     pub EvalError
     ArgumentNumber{exp: usize, got: usize} = "Wrong number of arguments, expected {exp}, got {got}",
-    InvalidArguments{args: String} = "Invalid arguments {args}",
+    InvalidArguments{args: String} = "Invalid arguments for function: {args}",
     VoidFunction{name: String} = "Function {name} not found",
     VoidVariable{name: String} = "Variable {name} not found",
     ShouldBeNum = "Argument should be number",
@@ -57,13 +57,14 @@ impl Context {
         }
     }
 
-    fn eval(&mut self, function: &Expr, args: Vec<Expr>) -> Result<Expr> {
+    fn apply(&mut self, function: &Expr, args: Vec<Expr>) -> Result<Expr> {
         match function {
             Atomic(Atom::Name(name)) => {
                 let fun = self.get_function_from_name(name, &args)?;
                 // Add the local variables to the context
                 for (i, arg_name) in fun.args.iter().enumerate() {
-                    self.vars.insert(arg_name.to_string(), args[i].clone());
+                    let arg = self.eval_ast(&args[i])?;
+                    self.vars.insert(arg_name.to_string(), arg);
                 }
                 let res = self.eval_ast(&fun.body);
                 // Pop local variables from the context
@@ -80,6 +81,7 @@ impl Context {
                 Ops::Defun => self.defun(args),
                 Ops::Nth => self.nth(args),
                 Ops::List => self.list(args),
+                Ops::Eval => self.eval_builtin(args),
                 _ => Err(EvalError::Unimplemented {
                     name: format!("{:?}", op),
                 }),
@@ -105,10 +107,15 @@ impl Context {
                 if sexp_list.is_empty() {
                     Ok(Atomic(Atom::Boolean(Bool::Nil)))
                 } else {
-                    self.eval(&sexp_list[0], sexp_list[1..].to_vec())
+                    print!("in:{:?}\r\n", sexp_list);
+                    let res = self.apply(&sexp_list[0], sexp_list[1..].to_vec());
+                    print!("out:{:?}\r\n", res);
+                    res
                 }
             }
-            Qexpr(sexp_list) => Ok(Qexpr(sexp_list.to_vec())),
+            Qexpr(sexp_list) => {
+                Ok(Expr::List(sexp_list.to_vec()))
+            },
         }
     }
 
@@ -309,6 +316,18 @@ impl Context {
                 .collect::<Result<Vec<Expr>>>()?,
         ))
     }
+
+    fn eval_builtin(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        if args.len() != 1 {
+            Err(EvalError::ArgumentNumber {
+                exp: 1,
+                got: args.len(),
+            })
+        } else {
+            Ok(self.eval_ast(&args[0])?)
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -322,7 +341,7 @@ mod tests {
         let mut ctx = Context::default();
         let ast = Expr::Atomic(Atom::Number(Num::Int(3)));
         let result = ctx.eval_ast(&ast);
-        assert_eq!(result, Ok(Expr::Atomic(Atom::Number(Num::Int(3)))));
+        assert_eq!(result.unwrap(), Expr::Atomic(Atom::Number(Num::Int(3))));
     }
 
     #[test]
@@ -345,7 +364,7 @@ mod tests {
             .to_vec(),
         );
         let result = ctx.eval_ast(&ast);
-        assert_eq!(result, Ok(Expr::Atomic(Atom::Number(Num::Int(20)))));
+        assert_eq!(result.unwrap(), Expr::Atomic(Atom::Number(Num::Int(20))));
     }
 
     #[test]
@@ -380,7 +399,7 @@ mod tests {
             .to_vec(),
         );
         let result = ctx.eval_ast(&ast);
-        assert_eq!(result, Ok(Expr::Atomic(Atom::Number(Num::Int(196)))));
+        assert_eq!(result.unwrap(), Expr::Atomic(Atom::Number(Num::Int(196))));
     }
 
     #[test]
@@ -403,6 +422,9 @@ mod tests {
             .to_vec(),
         );
         let result = ctx.eval_ast(&ast);
-        assert_eq!(result, Ok(Expr::Atomic(Atom::Name("square".to_string()))));
+        assert_eq!(
+            result.unwrap(),
+            Expr::Atomic(Atom::Name("square".to_string()))
+        );
     }
 }
