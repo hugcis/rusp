@@ -314,10 +314,8 @@ impl Context {
                     } else {
                         Ok(c[0].clone())
                     }
-                },
-                Qexpr(_) | Atomic(_) => {
-                    Err(EvalError::WrongTypeArgumentList)
                 }
+                Qexpr(_) | Atomic(_) => Err(EvalError::WrongTypeArgumentList),
             }
         }
     }
