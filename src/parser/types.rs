@@ -39,6 +39,7 @@ pub enum Ops {
     Nth,
     List,
     Eval,
+    Car,
 }
 
 impl fmt::Display for Num {

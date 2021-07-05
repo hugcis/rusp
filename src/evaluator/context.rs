@@ -1,37 +1,8 @@
+use super::{Context, EvalError, Function, Result};
 use crate::parser::Expr::Atomic;
 use crate::parser::Expr::Qexpr;
 use crate::parser::{Atom, Bool, Expr, Num, Ops};
-use custom_error::custom_error;
 use std::collections::HashMap;
-
-custom_error! {
-    pub EvalError
-    ArgumentNumber{exp: usize, got: usize} = "Wrong number of arguments, expected {exp}, got {got}",
-    InvalidArguments{args: String} = "Invalid arguments for function: {args}",
-    VoidFunction{name: String} = "Function {name} not found",
-    VoidVariable{name: String} = "Variable {name} not found",
-    ShouldBeNum = "Argument should be number",
-    InvalidVarName = "Invalid variable name",
-    Unimplemented{name: String} = "Built-in {name} not implemented",
-    InvalidFunction = "Invalid function",
-    IntOverflow = "Integer overflow",
-    DivBy0 = "Division by 0",
-    InvalidSyntax = "Invalid syntax"
-}
-
-type Result<T> = std::result::Result<T, EvalError>;
-
-#[derive(Default, Debug)]
-pub struct Context {
-    vars: HashMap<String, Expr>,
-    funcs: HashMap<String, Function>,
-}
-
-#[derive(Clone, Debug)]
-struct Function {
-    args: Vec<String>,
-    body: Expr,
-}
 
 impl Context {
     fn get_funcs(&self) -> &HashMap<String, Function> {
@@ -82,11 +53,14 @@ impl Context {
                 Ops::Nth => self.nth(args),
                 Ops::List => self.list(args),
                 Ops::Eval => self.eval_builtin(args),
+                Ops::Car => self.car(args),
                 _ => Err(EvalError::Unimplemented {
                     name: format!("{:?}", op),
                 }),
             },
-            _ => Err(EvalError::InvalidFunction),
+            _ => Err(EvalError::InvalidFunction {
+                function: function.to_string(),
+            }),
         }
     }
 
@@ -113,22 +87,8 @@ impl Context {
                     res
                 }
             }
-            Qexpr(sexp_list) => {
-                Ok(Expr::List(sexp_list.to_vec()))
-            },
+            Qexpr(sexp_list) => Ok(Expr::List(sexp_list.to_vec())),
         }
-    }
-
-    fn args_to_numbers(&mut self, args: Vec<Expr>) -> Result<Vec<Num>> {
-        args.into_iter()
-            .map(|x| self.eval_ast(&x))
-            .collect::<Result<Vec<Expr>>>()?
-            .into_iter()
-            .map(|x| match x {
-                Atomic(Atom::Number(n)) => Ok(n),
-                _ => Err(EvalError::ShouldBeNum),
-            })
-            .collect::<Result<Vec<Num>>>()
     }
 
     fn nth(&mut self, args: Vec<Expr>) -> Result<Expr> {
@@ -145,6 +105,75 @@ impl Context {
                     .join(" "),
             }),
         }
+    }
+
+    fn defun(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        if args.len() != 3 {
+            Err(EvalError::ArgumentNumber {
+                exp: 3,
+                got: args.len(),
+            })
+        } else {
+            match args.as_slice() {
+                [Atomic(Atom::Name(name)), Expr::List(fn_args), Expr::List(fn_body)] => {
+                    let function_args = fn_args
+                        .iter()
+                        .map(|x| {
+                            if let Atomic(Atom::Name(s)) = x {
+                                Ok(s.clone())
+                            } else {
+                                Err(EvalError::InvalidArguments {
+                                    args: fn_args
+                                        .iter()
+                                        .map(|x| format!("{}", x))
+                                        .collect::<Vec<String>>()
+                                        .join(" "),
+                                })
+                            }
+                        })
+                        .collect::<Result<Vec<String>>>()?;
+                    let function = Function {
+                        args: function_args,
+                        body: Expr::List(fn_body.to_vec()),
+                    };
+                    self.funcs.insert(name.to_string(), function);
+                    Ok(Atomic(Atom::Name(name.to_string())))
+                }
+                _ => Err(EvalError::InvalidSyntax),
+            }
+        }
+    }
+
+    fn list(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        Ok(Qexpr(
+            args.iter()
+                .map(|x| self.eval_ast(x))
+                .collect::<Result<Vec<Expr>>>()?,
+        ))
+    }
+
+    fn eval_builtin(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        if args.len() != 1 {
+            Err(EvalError::ArgumentNumber {
+                exp: 1,
+                got: args.len(),
+            })
+        } else {
+            print!("arg:{:?}\r\n", &args[0]);
+            Ok(self.eval_ast(&args[0])?)
+        }
+    }
+
+    fn args_to_numbers(&mut self, args: Vec<Expr>) -> Result<Vec<Num>> {
+        args.into_iter()
+            .map(|x| self.eval_ast(&x))
+            .collect::<Result<Vec<Expr>>>()?
+            .into_iter()
+            .map(|x| match x {
+                Atomic(Atom::Number(n)) => Ok(n),
+                _ => Err(EvalError::ShouldBeNum),
+            })
+            .collect::<Result<Vec<Num>>>()
     }
 
     fn add(&mut self, args: Vec<Expr>) -> Result<Expr> {
@@ -271,63 +300,27 @@ impl Context {
         )))
     }
 
-    fn defun(&mut self, args: Vec<Expr>) -> Result<Expr> {
-        if args.len() != 3 {
-            Err(EvalError::ArgumentNumber {
-                exp: 3,
-                got: args.len(),
-            })
-        } else {
-            match args.as_slice() {
-                [Atomic(Atom::Name(name)), Expr::List(fn_args), Expr::List(fn_body)] => {
-                    self.funcs.insert(
-                        name.to_string(),
-                        Function {
-                            args: fn_args
-                                .iter()
-                                .map(|x| {
-                                    if let Atomic(Atom::Name(s)) = x {
-                                        Ok(s.clone())
-                                    } else {
-                                        Err(EvalError::InvalidArguments {
-                                            args: fn_args
-                                                .iter()
-                                                .map(|x| format!("{}", x))
-                                                .collect::<Vec<String>>()
-                                                .join(" "),
-                                        })
-                                    }
-                                })
-                                .collect::<Result<Vec<String>>>()?,
-                            body: Expr::List(fn_body.to_vec()),
-                        },
-                    );
-                    Ok(Atomic(Atom::Name(name.to_string())))
-                }
-                _ => Err(EvalError::InvalidSyntax),
-            }
-        }
-    }
-
-    fn list(&mut self, args: Vec<Expr>) -> Result<Expr> {
-        Ok(Qexpr(
-            args.iter()
-                .map(|x| self.eval_ast(x))
-                .collect::<Result<Vec<Expr>>>()?,
-        ))
-    }
-
-    fn eval_builtin(&mut self, args: Vec<Expr>) -> Result<Expr> {
+    fn car(&mut self, args: Vec<Expr>) -> Result<Expr> {
         if args.len() != 1 {
             Err(EvalError::ArgumentNumber {
                 exp: 1,
                 got: args.len(),
             })
         } else {
-            Ok(self.eval_ast(&args[0])?)
+            match self.eval_ast(&args[0])? {
+                Expr::List(c) => {
+                    if c.is_empty() {
+                        Ok(Expr::Atomic(Atom::Boolean(Bool::Nil)))
+                    } else {
+                        Ok(c[0].clone())
+                    }
+                },
+                Qexpr(_) | Atomic(_) => {
+                    Err(EvalError::WrongTypeArgumentList)
+                }
+            }
         }
     }
-
 }
 
 #[cfg(test)]

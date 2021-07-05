@@ -55,6 +55,7 @@ named!(
             | tag!("nth") => { |_| Ops::Nth }
             | tag!("list") => { |_| Ops::List }
             | tag!("eval") => { |_| Ops::Eval }
+            | tag!("Car") => { |_| Ops::Car }
     )
 );
 
