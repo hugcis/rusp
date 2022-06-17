@@ -37,6 +37,7 @@ impl Context {
                     let arg = self.eval_ast(&args[i])?;
                     self.vars.insert(arg_name.to_string(), arg);
                 }
+                println!("{:?} {:?}", fun, self.vars);
                 let res = self.eval_ast(&fun.body);
                 // Pop local variables from the context
                 for arg_name in fun.args.iter() {

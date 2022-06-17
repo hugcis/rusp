@@ -6,7 +6,7 @@ pub mod parser;
 
 use crate::evaluator::Context;
 use crate::parser::parse_str;
-use std::io::{stdin, stdout, Write};
+use rustyline::{Cmd, KeyCode, KeyEvent, Modifiers};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -14,23 +14,29 @@ use rustyline::Editor;
 const PROMPT: &str = "rlisp> ";
 
 fn main() {
-    println!(
-        "{}RSLisp Version 0.0.1\r\nPress Ctrl+c to Exit{}\r",
-        style::Bold,
-        style::Reset,
-    );
+    println!("RSLisp Version 0.0.1\r\nPress Ctrl+c to Exit\r",);
 
     let mut ctx = Context::default();
     let mut rl = Editor::<()>::new();
+    rl.bind_sequence(
+        KeyEvent {
+            0: KeyCode::Up,
+            1: Modifiers::NONE,
+        },
+        Cmd::HistorySearchForward,
+    );
+    rl.bind_sequence(
+        KeyEvent {
+            0: KeyCode::Down,
+            1: Modifiers::NONE,
+        },
+        Cmd::HistorySearchBackward,
+    );
+    rl.bind_sequence(KeyEvent::alt('n'), Cmd::HistorySearchForward);
+    rl.bind_sequence(KeyEvent::alt('p'), Cmd::HistorySearchBackward);
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
     }
-
-    let mut buf: Vec<char> = vec![];
-    let mut history: Vec<String> = vec![];
-    let mut count = 0;
-    let mut hist_height = 1;
-    // print_prompt(&mut stdout);
 
     loop {
         let readline = rl.readline(PROMPT);
