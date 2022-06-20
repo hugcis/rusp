@@ -11,20 +11,21 @@ Parsing is done with the [[https://github.com/Geal/nom][nom]] parser framework.
 The program comes with a REPL to use the language interactively:
 #+begin_src
 $ ./rusp
-RSLisp Version 0.0.1
+Rusp Version 0.0.1
 Press Ctrl+c to Exit
-rlisp> (+ 3 3)
+rusp> (+ 3 3)
 6
-rlisp>
+rusp>
 #+end_src
 
 ** Implemented
+Here is a list of implemented/planned features for rusp
 
 *** Operations
 
 - ☑️ Addition
 #+begin_src sh :dir ./target/debug :exports both
-./rslisp -e "(+ 3 1)"
+./rusp -e "(+ 3 1)"
 #+end_src
 
 #+RESULTS:
@@ -32,7 +33,7 @@ rlisp>
 
 - ☑ Substraction
 #+begin_src sh :dir ./target/debug :exports both
-./rslisp -e "(- 3 1)"
+./rusp -e "(- 3 1)"
 #+end_src
 
 #+RESULTS:
@@ -40,7 +41,7 @@ rlisp>
 
 - ☑ Multiplication
 #+begin_src sh :dir ./target/debug :exports both
-./rslisp -e "(* 3 12)"
+./rusp -e "(* 3 12)"
 #+end_src
 
 #+RESULTS:
@@ -48,7 +49,7 @@ rlisp>
 
 - ☑ Division
 #+begin_src sh :dir ./target/debug :exports both
-./rslisp -e "(/ 3. 12)"
+./rusp -e "(/ 3. 12)"
 #+end_src
 
 #+RESULTS:
@@ -58,7 +59,7 @@ rlisp>
 
 - ☑ Define function
 #+begin_src sh :dir ./target/debug :exports both
-./rslisp -e "(defun square (x) (* x x))"
+./rusp -e "(defun square (x) (* x x))"
 #+end_src
 
 #+RESULTS:
@@ -66,7 +67,7 @@ rlisp>
 
 - ☑ Eval function
 #+begin_src sh :dir ./target/debug :exports both
-  ./rslisp -e "(defun square (x) (* x x))
+  ./rusp -e "(defun square (x) (* x x))
            (square 5)"
 #+end_src
 
@@ -75,7 +76,7 @@ rlisp>
 
 - ☑ Quoted expressions
 #+begin_src sh :dir ./target/debug :exports both
-  ./rslisp -e "(car '(1 2 3))"
+  ./rusp -e "(car '(1 2 3))"
 #+end_src
 
 #+RESULTS:
@@ -85,7 +86,7 @@ rlisp>
 
 - ☑ Nth element of a list
 #+begin_src sh :dir ./target/debug :exports both
-  ./rslisp -e "(nth 2 '((car '(4 5 6)) 2 3))"
+  ./rusp -e "(nth 2 '((car '(4 5 6)) 2 3))"
 #+end_src
 
 #+RESULTS:
@@ -93,7 +94,7 @@ rlisp>
 
 - ☑ car: first element of a list
 #+begin_src sh :dir ./target/debug :exports both
-  ./rslisp -e "(car '((car '(4 5 6)) 2 3))"
+  ./rusp -e "(car '((car '(4 5 6)) 2 3))"
 #+end_src
 
 #+RESULTS:

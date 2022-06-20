@@ -22,7 +22,7 @@ struct Args {
     debug: bool,
 }
 
-const PROMPT: &str = "rlisp> ";
+const PROMPT: &str = "rusp> ";
 
 fn main() {
     let args = Args::parse();
