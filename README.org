@@ -43,7 +43,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 
 *** Built-ins
 
-- [x] Define function
+- ☑ Define function
 #+begin_src sh :dir ./target/debug :exports both
 ./rslisp -e "(defun square (x) (* x x))"
 #+end_src
@@ -51,7 +51,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 #+RESULTS:
 : square
 
-- [x] Eval function
+- ☑ Eval function
 #+begin_src sh :dir ./target/debug :exports both
   ./rslisp -e "(defun square (x) (* x x))
            (square 5)"
@@ -60,7 +60,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 #+RESULTS:
 : square
 
-- [x] Quoted expressions
+- ☑ Quoted expressions
 #+begin_src sh :dir ./target/debug :exports both
   ./rslisp -e "(car '(1 2 3))"
 #+end_src
@@ -70,7 +70,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 
 **** Functions
 
-- [x] Nth element of a list
+- ☑ Nth element of a list
 #+begin_src sh :dir ./target/debug :exports both
   ./rslisp -e "(nth 2 '((car '(4 5 6)) 2 3))"
 #+end_src
@@ -78,10 +78,13 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 #+RESULTS:
 : 3
 
-- [x] car: first element of a list
+- ☑ car: first element of a list
 #+begin_src sh :dir ./target/debug :exports both
   ./rslisp -e "(car '((car '(4 5 6)) 2 3))"
 #+end_src
 
 #+RESULTS:
 : (car '(4 5 6))
+
+-  ❌ range
+-  ❌ map

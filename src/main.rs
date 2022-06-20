@@ -35,10 +35,16 @@ fn main() {
                         let result = ctx.eval_ast(&ast);
                         match result {
                             Ok(result) => print!("{}\r\n", result),
-                            Err(e) => eprint!("Eval error: {}\r\n", e),
+                            Err(e) => {
+                                eprint!("Eval error: {}\r\n", e);
+                                break;
+                            }
                         }
                     }
-                    Err(e) => eprint!("{}\r\n", e),
+                    Err(e) => {
+                        eprint!("{}\r\n", e);
+                        break;
+                    }
                 };
             }
         }
