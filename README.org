@@ -10,7 +10,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 *** Operations
 
 - ☑️ Addition
-#+begin_src sh :dir ./target/debug
+#+begin_src sh :dir ./target/debug :export both
 ./rslisp -e "(+ 3 1)"
 #+end_src
 
@@ -18,8 +18,28 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 : 4
 
 - ☑ Substraction
+#+begin_src sh :dir ./target/debug :export both
+./rslisp -e "(- 3 1)"
+#+end_src
+
+#+RESULTS:
+: 2
+
 - ☑ Multiplication
+#+begin_src sh :dir ./target/debug :export both
+./rslisp -e "(* 3 12)"
+#+end_src
+
+#+RESULTS:
+: 36
+
 - ☑ Division
+#+begin_src sh :dir ./target/debug :export both
+./rslisp -e "(/ 3. 12)"
+#+end_src
+
+#+RESULTS:
+: 0.25
 
 *** Built-ins
 
