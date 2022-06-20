@@ -59,7 +59,7 @@ impl Context {
                 Ops::List => self.list(args),
                 Ops::Eval => self.eval_builtin(args),
                 Ops::Car => self.car(args),
-                Ops::Map => self.map(args),
+                // Ops::Map => self.map(args),
                 _ => Err(EvalError::Unimplemented {
                     name: format!("{:?}", op),
                 }),
@@ -118,7 +118,10 @@ impl Context {
             [func, Qexpr(vec)] => Ok(Expr::List(
                 vec.iter()
                     .map(|arg| match arg {
-                        Qexpr(arg_vec) => {println!("{} {:?}", func, arg_vec);self.apply(func, arg_vec.to_vec())},
+                        Qexpr(arg_vec) => {
+                            println!("{} {:?}", func, arg_vec);
+                            self.apply(func, arg_vec.to_vec())
+                        }
                         Atomic(arg) => self.apply(func, vec![Atomic(arg.clone())]),
                         Expr::List(arg) => self.apply(func, vec![Expr::List(arg.to_vec())]),
                     })
@@ -473,7 +476,7 @@ mod tests {
     }
 
     #[test]
-    fn should_define_function_from_car() {
+    fn should_define_and_eval_function_from_car() {
         let mut ctx = Context::default();
         let ast = Expr::List(
             [
@@ -499,6 +502,7 @@ mod tests {
                     [
                         Atomic(Atom::Number(Num::Int(5))),
                         Atomic(Atom::Number(Num::Int(6))),
+                        Atomic(Atom::Number(Num::Int(12))),
                     ]
                     .to_vec(),
                 ),
@@ -507,5 +511,61 @@ mod tests {
         );
         let result = ctx.eval_ast(&ast);
         assert_eq!(result.unwrap(), Atomic(Atom::Number(Num::Int(5))));
+    }
+
+    #[test]
+    fn should_eval_nested_expressions() {
+        let mut ctx = Context::default();
+        // (car '((car '(3.231 6 9)) 3 8.1))
+        let ast = Expr::List(
+            [
+                Atomic(Atom::Op(Ops::Car)),
+                Expr::Qexpr(
+                    [
+                        Expr::List(
+                            [
+                                Atomic(Atom::Op(Ops::Car)),
+                                Expr::Qexpr(
+                                    [
+                                        Atomic(Atom::Number(Num::Double(3.231))),
+                                        Atomic(Atom::Number(Num::Int(6))),
+                                        Atomic(Atom::Number(Num::Int(9))),
+                                    ]
+                                    .to_vec(),
+                                ),
+                            ]
+                            .to_vec(),
+                        ),
+                        Atomic(Atom::Number(Num::Int(3))),
+                        Atomic(Atom::Number(Num::Double(8.1))),
+                    ]
+                    .to_vec(),
+                ),
+            ]
+            .to_vec(),
+        );
+        let result = ctx.eval_ast(&ast).unwrap();
+        assert_eq!(
+            result,
+            Expr::List(
+                [
+                    Atomic(Atom::Op(Ops::Car)),
+                    Expr::Qexpr(
+                        [
+                            Atomic(Atom::Number(Num::Double(3.231))),
+                            Atomic(Atom::Number(Num::Int(6))),
+                            Atomic(Atom::Number(Num::Int(9))),
+                        ]
+                        .to_vec(),
+                    ),
+                ]
+                .to_vec(),
+            ),
+        );
+
+        // (eval (car '((car '(3.231 6 9)) 3 8.1)))
+        let ast = Expr::List([Atomic(Atom::Op(Ops::Eval)), result].to_vec());
+        let result = ctx.eval_ast(&ast).unwrap();
+        assert_eq!(result, Atomic(Atom::Number(Num::Double(3.231))));
     }
 }
