@@ -1,12 +1,14 @@
 * Rusp: a lisp written in Rust
 
-This is a side-project. I wrote a minimal Lisp in Rust. It still need a number
-of new features to be remotely close to a working programming language.
+I wrote a minimal Lisp in Rust.
+
+This is a side-project. It still needs a number of new features to be remotely
+close to a working programming language.
 
 Parsing is done with the [[https://github.com/Geal/nom][nom]] parser framework.
 
 ** REPL
-The program comes with a REPL:
+The program comes with a REPL to use the language interactively:
 #+begin_src
 $ ./rusp
 RSLisp Version 0.0.1
