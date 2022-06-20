@@ -3,7 +3,18 @@
 This is a side-project. I wrote a minimal Lisp in Rust. It still need a number
 of new features to be remotely close to a working programming language.
 
-Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
+Parsing is done with the (nom)[https://github.com/Geal/nom] parser framework.
+
+** REPL
+The program comes with a REPL:
+#+begin_src
+$ ./rusp
+RSLisp Version 0.0.1
+Press Ctrl+c to Exit
+rlisp> (+ 3 3)
+6
+rlisp>
+#+end_src
 
 ** Implemented
 
