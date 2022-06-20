@@ -10,7 +10,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 *** Operations
 
 - ☑️ Addition
-#+begin_src sh :dir ./target/debug :export both
+#+begin_src sh :dir ./target/debug :exports both
 ./rslisp -e "(+ 3 1)"
 #+end_src
 
@@ -18,7 +18,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 : 4
 
 - ☑ Substraction
-#+begin_src sh :dir ./target/debug :export both
+#+begin_src sh :dir ./target/debug :exports both
 ./rslisp -e "(- 3 1)"
 #+end_src
 
@@ -26,7 +26,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 : 2
 
 - ☑ Multiplication
-#+begin_src sh :dir ./target/debug :export both
+#+begin_src sh :dir ./target/debug :exports both
 ./rslisp -e "(* 3 12)"
 #+end_src
 
@@ -34,7 +34,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 : 36
 
 - ☑ Division
-#+begin_src sh :dir ./target/debug :export both
+#+begin_src sh :dir ./target/debug :exports both
 ./rslisp -e "(/ 3. 12)"
 #+end_src
 
@@ -44,10 +44,44 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 *** Built-ins
 
 - [x] Define function
+#+begin_src sh :dir ./target/debug :exports both
+./rslisp -e "(defun square (x) (* x x))"
+#+end_src
+
+#+RESULTS:
+: square
+
 - [x] Eval function
+#+begin_src sh :dir ./target/debug :exports both
+  ./rslisp -e "(defun square (x) (* x x))
+           (square 5)"
+#+end_src
+
+#+RESULTS:
+: square
+
 - [x] Quoted expressions
+#+begin_src sh :dir ./target/debug :exports both
+  ./rslisp -e "(car '(1 2 3))"
+#+end_src
+
+#+RESULTS:
+: 1
 
 **** Functions
 
 - [x] Nth element of a list
+#+begin_src sh :dir ./target/debug :exports both
+  ./rslisp -e "(nth 2 '((car '(4 5 6)) 2 3))"
+#+end_src
+
+#+RESULTS:
+: 3
+
 - [x] car: first element of a list
+#+begin_src sh :dir ./target/debug :exports both
+  ./rslisp -e "(car '((car '(4 5 6)) 2 3))"
+#+end_src
+
+#+RESULTS:
+: (car '(4 5 6))

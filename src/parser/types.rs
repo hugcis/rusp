@@ -66,7 +66,7 @@ impl fmt::Display for Atom {
         match self {
             Atom::Name(n) => write!(f, "{}", n),
             Atom::Quoted(n) => write!(f, "\"{}\"", n),
-            Atom::Op(op) => write!(f, "{:?}", op),
+            Atom::Op(op) => write!(f, "{}", op),
             Atom::Number(num) => write!(f, "{}", num),
             Atom::Boolean(bl) => write!(f, "{}", bl),
         }
@@ -96,5 +96,11 @@ impl fmt::Display for Expr {
                     .join(" ")
             ),
         }
+    }
+}
+
+impl fmt::Display for Ops {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", format!("{:?}", self).to_lowercase())
     }
 }

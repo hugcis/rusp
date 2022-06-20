@@ -29,16 +29,18 @@ fn main() {
     match args.expr {
         Some(expr) => {
             let mut ctx = Context::new(args.debug);
-            match parse_str(&expr) {
-                Ok(ast) => {
-                    let result = ctx.eval_ast(&ast);
-                    match result {
-                        Ok(result) => print!("{}\r\n", result),
-                        Err(e) => eprint!("Eval error: {}\r\n", e),
+            for line in expr.lines() {
+                match parse_str(&line) {
+                    Ok(ast) => {
+                        let result = ctx.eval_ast(&ast);
+                        match result {
+                            Ok(result) => print!("{}\r\n", result),
+                            Err(e) => eprint!("Eval error: {}\r\n", e),
+                        }
                     }
-                }
-                Err(e) => eprint!("{}\r\n", e),
-            };
+                    Err(e) => eprint!("{}\r\n", e),
+                };
+            }
         }
         None => repl(args.debug),
     }
