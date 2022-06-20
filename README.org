@@ -9,7 +9,7 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 
 *** Operations
 
-- [x] Addition
+- ☑️ Addition
 #+begin_src sh :dir ./target/debug
 ./rslisp -e "(+ 3 1)"
 #+end_src
@@ -17,9 +17,9 @@ Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
 #+RESULTS:
 : 4
 
-- [x] Substraction
-- [x] Multiplication
-- [x] Division
+- ☑ Substraction
+- ☑ Multiplication
+- ☑ Division
 
 *** Built-ins
 
