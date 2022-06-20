@@ -56,6 +56,7 @@ named!(
             | tag!("list") => { |_| Ops::List }
             | tag!("eval") => { |_| Ops::Eval }
             | tag!("car") => { |_| Ops::Car }
+            // | tag!("map") => { |_| Ops::Map }
     )
 );
 

@@ -40,6 +40,7 @@ pub enum Ops {
     List,
     Eval,
     Car,
+    Map,
 }
 
 impl fmt::Display for Num {

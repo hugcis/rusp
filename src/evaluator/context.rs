@@ -9,6 +9,10 @@ impl Context {
         &self.funcs
     }
 
+    fn add_var(&mut self, name: &str, var: Expr) {
+        self.vars.insert(name.to_owned(), var);
+    }
+
     fn get_function_from_name(&self, name: &str, args: &[Expr]) -> Result<Function> {
         let fun_res = self.get_funcs().get(name);
         match fun_res {
@@ -34,8 +38,8 @@ impl Context {
                 let fun = self.get_function_from_name(name, &args)?;
                 // Add the local variables to the context
                 for (i, arg_name) in fun.args.iter().enumerate() {
-                    let arg = self.eval_ast(&args[i])?;
-                    self.vars.insert(arg_name.to_string(), arg);
+                    let arg = args[i].clone();
+                    self.add_var(arg_name, arg);
                 }
                 println!("{:?} {:?}", fun, self.vars);
                 let res = self.eval_ast(&fun.body);
@@ -55,6 +59,7 @@ impl Context {
                 Ops::List => self.list(args),
                 Ops::Eval => self.eval_builtin(args),
                 Ops::Car => self.car(args),
+                Ops::Map => self.map(args),
                 _ => Err(EvalError::Unimplemented {
                     name: format!("{:?}", op),
                 }),
@@ -98,6 +103,27 @@ impl Context {
                 let answer = vec[*idx as usize].clone();
                 Ok(answer)
             }
+            _ => Err(EvalError::InvalidArguments {
+                args: args
+                    .iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            }),
+        }
+    }
+
+    fn map(&mut self, args: Vec<Expr>) -> Result<Expr> {
+        match args.as_slice() {
+            [func, Qexpr(vec)] => Ok(Expr::List(
+                vec.iter()
+                    .map(|arg| match arg {
+                        Qexpr(arg_vec) => {println!("{} {:?}", func, arg_vec);self.apply(func, arg_vec.to_vec())},
+                        Atomic(arg) => self.apply(func, vec![Atomic(arg.clone())]),
+                        Expr::List(arg) => self.apply(func, vec![Expr::List(arg.to_vec())]),
+                    })
+                    .collect::<Result<Vec<Expr>>>()?,
+            )),
             _ => Err(EvalError::InvalidArguments {
                 args: args
                     .iter()
@@ -160,8 +186,9 @@ impl Context {
                 got: args.len(),
             })
         } else {
-            print!("arg:{:?}\r\n", &args[0]);
-            Ok(self.eval_ast(&args[0])?)
+            print!("eval-arg:{:?}\r\n", &args[0]);
+            let interm = &self.eval_ast(&args[0])?;
+            Ok(self.eval_ast(interm)?)
         }
     }
 
@@ -301,6 +328,7 @@ impl Context {
         )))
     }
 
+    /// Return the first element of a list or nil if empty
     fn car(&mut self, args: Vec<Expr>) -> Result<Expr> {
         if args.len() != 1 {
             Err(EvalError::ArgumentNumber {
@@ -357,6 +385,30 @@ mod tests {
         );
         let result = ctx.eval_ast(&ast);
         assert_eq!(result.unwrap(), Expr::Atomic(Atom::Number(Num::Int(20))));
+    }
+
+    #[test]
+    fn should_eval_polish_with_vars() {
+        let mut ctx = Context::default();
+        ctx.add_var("x", Atomic(Atom::Number(Num::Int(12))));
+        let ast = Expr::List(
+            [
+                Atomic(Atom::Op(Ops::Add)),
+                Atomic(Atom::Number(Num::Int(3))),
+                Atomic(Atom::Name("x".to_string())),
+                Expr::List(
+                    [
+                        Atomic(Atom::Op(Ops::Mul)),
+                        Atomic(Atom::Number(Num::Int(9))),
+                        Atomic(Atom::Name("x".to_string())),
+                    ]
+                    .to_vec(),
+                ),
+            ]
+            .to_vec(),
+        );
+        let result = ctx.eval_ast(&ast);
+        assert_eq!(result.unwrap(), Atomic(Atom::Number(Num::Int(123))));
     }
 
     #[test]
@@ -418,5 +470,42 @@ mod tests {
             result.unwrap(),
             Expr::Atomic(Atom::Name("square".to_string()))
         );
+    }
+
+    #[test]
+    fn should_define_function_from_car() {
+        let mut ctx = Context::default();
+        let ast = Expr::List(
+            [
+                Atomic(Atom::Op(Ops::Defun)),
+                Atomic(Atom::Name("first".to_string())),
+                Expr::List([Atomic(Atom::Name("x".to_string()))].to_vec()),
+                Expr::List(
+                    [
+                        Atomic(Atom::Op(Ops::Car)),
+                        Atomic(Atom::Name("x".to_string())),
+                    ]
+                    .to_vec(),
+                ),
+            ]
+            .to_vec(),
+        );
+        let result = ctx.eval_ast(&ast);
+        assert_eq!(result.unwrap(), Atomic(Atom::Name("first".to_string())));
+        let ast = Expr::List(
+            [
+                Atomic(Atom::Name("first".to_string())),
+                Expr::Qexpr(
+                    [
+                        Atomic(Atom::Number(Num::Int(5))),
+                        Atomic(Atom::Number(Num::Int(6))),
+                    ]
+                    .to_vec(),
+                ),
+            ]
+            .to_vec(),
+        );
+        let result = ctx.eval_ast(&ast);
+        assert_eq!(result.unwrap(), Atomic(Atom::Number(Num::Int(5))));
     }
 }
