@@ -41,7 +41,6 @@ impl Context {
                     let arg = args[i].clone();
                     self.add_var(arg_name, arg);
                 }
-                println!("{:?} {:?}", fun, self.vars);
                 let res = self.eval_ast(&fun.body);
                 // Pop local variables from the context
                 for arg_name in fun.args.iter() {
@@ -87,9 +86,13 @@ impl Context {
                 if sexp_list.is_empty() {
                     Ok(Atomic(Atom::Boolean(Bool::Nil)))
                 } else {
-                    print!("in:{:?}\r\n", sexp_list);
+                    if self.debug {
+                        print!("in:{:?}\r\n", sexp_list);
+                    }
                     let res = self.apply(&sexp_list[0], sexp_list[1..].to_vec());
-                    print!("out:{:?}\r\n", res);
+                    if self.debug {
+                        print!("out:{:?}\r\n", res);
+                    }
                     res
                 }
             }

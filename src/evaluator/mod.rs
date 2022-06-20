@@ -26,6 +26,15 @@ type Result<T> = std::result::Result<T, EvalError>;
 pub struct Context {
     vars: HashMap<String, Expr>,
     funcs: HashMap<String, Function>,
+    debug: bool,
+}
+
+impl Context {
+    pub fn new(debug: bool) -> Self {
+        let mut ctx = Context::default();
+        ctx.debug = debug;
+        ctx
+    }
 }
 
 #[derive(Clone, Debug)]

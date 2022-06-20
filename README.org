@@ -1,0 +1,33 @@
+* Rusp: a lisp written in Rust
+
+This is a side-project. I wrote a minimal Lisp in Rust. It still need a number
+of new features to be remotely close to a working programming language.
+
+Parsing is done with the [nom](https://github.com/Geal/nom) parser framework.
+
+** Implemented
+
+*** Operations
+
+- [x] Addition
+#+begin_src sh :dir ./target/debug
+./rslisp -e "(+ 3 1)"
+#+end_src
+
+#+RESULTS:
+: 4
+
+- [x] Substraction
+- [x] Multiplication
+- [x] Division
+
+*** Built-ins
+
+- [x] Define function
+- [x] Eval function
+- [x] Quoted expressions
+
+**** Functions
+
+- [x] Nth element of a list
+- [x] car: first element of a list

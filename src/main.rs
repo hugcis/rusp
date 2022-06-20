@@ -8,15 +8,46 @@ use crate::evaluator::Context;
 use crate::parser::parse_str;
 use rustyline::{Cmd, KeyCode, KeyEvent, Modifiers};
 
+use clap::Parser;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long, value_parser)]
+    expr: Option<String>,
+
+    #[clap(short, long, action)]
+    debug: bool,
+}
 
 const PROMPT: &str = "rlisp> ";
 
 fn main() {
+    let args = Args::parse();
+    match args.expr {
+        Some(expr) => {
+            let mut ctx = Context::new(args.debug);
+            match parse_str(&expr) {
+                Ok(ast) => {
+                    let result = ctx.eval_ast(&ast);
+                    match result {
+                        Ok(result) => print!("{}\r\n", result),
+                        Err(e) => eprint!("Eval error: {}\r\n", e),
+                    }
+                }
+                Err(e) => eprint!("{}\r\n", e),
+            };
+        }
+        None => repl(args.debug),
+    }
+}
+
+fn repl(debug: bool) {
     println!("RSLisp Version 0.0.1\r\nPress Ctrl+c to Exit\r",);
 
-    let mut ctx = Context::default();
+    let mut ctx = Context::new(debug);
     let mut rl = Editor::<()>::new();
     rl.bind_sequence(
         KeyEvent {
