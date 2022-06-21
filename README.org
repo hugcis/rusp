@@ -100,5 +100,10 @@ Here is a list of implemented/planned features for rusp
 #+RESULTS:
 : (car '(4 5 6))
 
+- ☑ eval: evaluate expression
+#+begin_src sh :dir ./target/debug :exports both
+  ./rusp -e "(eval (car '((car '(4 5 6)) 2 3)))"
+#+end_src
+
 -  ❌ range
 -  ❌ map

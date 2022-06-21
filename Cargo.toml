@@ -6,10 +6,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rustyline = "8.2.0"
+rustyline = "9.1"
 custom_error = "1.9.2"
 clap = { version = "3.2.5", features = ["derive"] }
 
 [dependencies.nom]
-version = "6.2"
-features = ["alloc", "regexp"]
+version = "7.1"
+# features = ["alloc", "regexp"]

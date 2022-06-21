@@ -4,15 +4,16 @@ mod strparser;
 mod types;
 
 use custom_error::custom_error;
-use nom::branch::alt;
-use nom::bytes::complete::{tag, tag_no_case};
 use nom::character::complete::{alpha1, alphanumeric1, char, one_of};
 use nom::combinator::{map, map_res, not, recognize};
 use nom::multi::{many0, many1, separated_list0};
 use nom::number::complete::double;
 use nom::sequence::{delimited, pair, preceded, terminated};
 use nom::IResult;
-use nom::{alt, named, tag};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, tag_no_case},
+};
 
 pub use types::{Atom, Bool, Expr, Num, Ops};
 
@@ -39,26 +40,24 @@ fn identifier(input: &str) -> IResult<&str, &str> {
     ))(input)
 }
 
-named!(
-    operator<&str, Ops>,
-    alt!(
-        tag!("add") => { |_| Ops::Add }
-            | tag!("sub") => { |_| Ops::Sub }
-            | tag!("mul") => { |_| Ops::Mul }
-            | tag!("div") => { |_| Ops::Div }
-            | tag!("defun") => { |_| Ops::Defun }
-            | tag!("+") => { |_| Ops::Add }
-            | tag!("*") => { |_| Ops::Mul }
-            | tag!("-") => { |_| Ops::Sub }
-            | tag!("/") => { |_| Ops::Div }
-            | tag!("%") => { |_| Ops::Rem }
-            | tag!("nth") => { |_| Ops::Nth }
-            | tag!("list") => { |_| Ops::List }
-            | tag!("eval") => { |_| Ops::Eval }
-            | tag!("car") => { |_| Ops::Car }
-            // | tag!("map") => { |_| Ops::Map }
-    )
-);
+fn operator(input: &str) -> IResult<&str, Ops> {
+    alt((
+        map(tag("add"), |_| Ops::Add),
+        map(tag("sub"), |_| Ops::Sub),
+        map(tag("mul"), |_| Ops::Mul),
+        map(tag("div"), |_| Ops::Div),
+        map(tag("+"), |_| Ops::Add),
+        map(tag("-"), |_| Ops::Sub),
+        map(tag("*"), |_| Ops::Mul),
+        map(tag("/"), |_| Ops::Div),
+        map(tag("%"), |_| Ops::Rem),
+        map(tag("nth"), |_| Ops::Nth),
+        map(tag("list"), |_| Ops::List),
+        map(tag("eval"), |_| Ops::Eval),
+        map(tag("car"), |_| Ops::Car),
+        // map(tag("map"), |_| Ops::Map),
+    ))(input)
+}
 
 fn sexpr(input: &str) -> IResult<&str, Vec<Expr>> {
     delimited(
