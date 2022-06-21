@@ -121,10 +121,7 @@ impl Context {
             [func, Qexpr(vec)] => Ok(Expr::List(
                 vec.iter()
                     .map(|arg| match arg {
-                        Qexpr(arg_vec) => {
-                            println!("{} {:?}", func, arg_vec);
-                            self.apply(func, arg_vec.to_vec())
-                        }
+                        Qexpr(arg_vec) => self.apply(func, arg_vec.to_vec()),
                         Atomic(arg) => self.apply(func, vec![Atomic(arg.clone())]),
                         Expr::List(arg) => self.apply(func, vec![Expr::List(arg.to_vec())]),
                     })
@@ -192,7 +189,9 @@ impl Context {
                 got: args.len(),
             })
         } else {
-            print!("eval-arg:{:?}\r\n", &args[0]);
+            if self.debug {
+                print!("eval-arg:{:?}\r\n", &args[0]);
+            }
             let interm = &self.eval_ast(&args[0])?;
             Ok(self.eval_ast(interm)?)
         }

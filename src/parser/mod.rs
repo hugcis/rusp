@@ -1,5 +1,3 @@
-extern crate nom;
-
 mod strparser;
 mod types;
 
@@ -55,6 +53,7 @@ fn operator(input: &str) -> IResult<&str, Ops> {
         map(tag("list"), |_| Ops::List),
         map(tag("eval"), |_| Ops::Eval),
         map(tag("car"), |_| Ops::Car),
+        map(tag("defun"), |_| Ops::Defun),
         // map(tag("map"), |_| Ops::Map),
     ))(input)
 }

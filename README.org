@@ -9,7 +9,7 @@ Parsing is done with the [[https://github.com/Geal/nom][nom]] parser framework.
 
 ** REPL
 The program comes with a REPL to use the language interactively:
-#+begin_src
+#+begin_src bash :noeval
 $ ./rusp
 Rusp Version 0.0.1
 Press Ctrl+c to Exit
@@ -66,13 +66,14 @@ Here is a list of implemented/planned features for rusp
 : square
 
 - ☑ Eval function
-#+begin_src sh :dir ./target/debug :exports both
+#+begin_src sh :dir ./target/debug :exports both :results output
   ./rusp -e "(defun square (x) (* x x))
            (square 5)"
 #+end_src
 
 #+RESULTS:
 : square
+: 25
 
 - ☑ Quoted expressions
 #+begin_src sh :dir ./target/debug :exports both
@@ -104,6 +105,9 @@ Here is a list of implemented/planned features for rusp
 #+begin_src sh :dir ./target/debug :exports both
   ./rusp -e "(eval (car '((car '(4 5 6)) 2 3)))"
 #+end_src
+
+#+RESULTS:
+: 4
 
 -  ❌ range
 -  ❌ map
